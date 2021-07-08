@@ -262,7 +262,6 @@ public class CrimeFragment extends Fragment {
 
     public void startMediaIntent(){
         Intent captureImageIntent = new Intent();
-        //captureImageIntent.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
         captureImageIntent.setAction(Intent.ACTION_PICK);
         captureImageIntent.setType("image/*");
         //captureImageIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
