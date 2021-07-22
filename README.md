@@ -7,5 +7,5 @@ The crime reports(excluding the photo) are stored in a sqlite database and the p
 Note:
 1. Uses Firebase for auth
 2. Firebase real time database is used for storage
-3. Image files are stored in Firebase cloud storage
+3. Image files are stored in Firebase cloud storage (**Functionality to be added**)
 4. User specific image files are also stored in persistent local storage, but other data is stored in firebase only
