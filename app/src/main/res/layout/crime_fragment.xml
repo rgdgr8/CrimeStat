@@ -10,7 +10,7 @@
         android:id="@+id/crime_img"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:srcCompat="@drawable/add_image_foreground" />
+        app:srcCompat="@drawable/ic_launcher_foreground" />
 
     <Button
         android:id="@+id/del_img"
@@ -67,5 +67,6 @@
         android:backgroundTint="@color/white"
         android:elevation="50dp"
         android:text="DELETE"
+        android:visibility="visible"
         android:textColor="@color/black" />
 </LinearLayout>

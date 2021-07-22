@@ -10,12 +10,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.List;
 import java.util.UUID;
 
 public class CrimePagerActivity extends AppCompatActivity {
-    public static String INTENT_EXTRA_CRIME_ID = "com.example.beatbox.crime_id";
+    private static final String TAG = "CrimePagerActivity";
     private ViewPager2 vp;
     private List<Crime> mCrimes;
 
@@ -24,12 +28,21 @@ public class CrimePagerActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_crime_pager);
 
+        mCrimes = CrimeLab.get(this).getCrimes();
         SharedPreferences sp = getSharedPreferences(CrimeListActivity.TAG,MODE_PRIVATE);
-        int currItemIndex = sp.getInt(CrimeListFragment.SP_INT_ARG_FOR_ITEM_CHANGED,0);
+
+        int currItemIndex = sp.getInt(CrimeListFragment.SP_INT_ARG_FOR_ITEM_CHANGED,-1);
+        Log.d(TAG, "onCreate: "+currItemIndex);
+        if(currItemIndex==-1){
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if(user!=null){
+                currItemIndex = mCrimes.size();
+                mCrimes.add(new Crime(user.getUid()));
+                FireBaseDbUtils.addCrime(mCrimes.get(currItemIndex));
+            }
+        }
 
         vp = findViewById(R.id.crime_view_pager);
-        mCrimes = CrimeLab.get(this).getCrimes();
-
         vp.setAdapter(new FragmentStateAdapter(this) {
             @NonNull
             @Override
@@ -42,13 +55,10 @@ public class CrimePagerActivity extends AppCompatActivity {
                 return mCrimes.size();
             }
         });
-
         vp.setCurrentItem(currItemIndex);
     }
 
-    public static Intent CrimeIntent(Context pkgCtx, UUID id){
-        Intent i = new Intent(pkgCtx,CrimePagerActivity.class);
-        i.putExtra(INTENT_EXTRA_CRIME_ID,id);
-        return i;
+    public static Intent CrimeIntent(Context pkgCtx){
+        return new Intent(pkgCtx,CrimePagerActivity.class);
     }
 }

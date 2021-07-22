@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "901246953012",
+    "project_id": "crimestat-2033f",
+    "storage_bucket": "crimestat-2033f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:901246953012:android:4a06009ec0f851b55e4c61",
+        "android_client_info": {
+          "package_name": "com.example.beatbox"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "901246953012-dmgsi4s6dvpcngo5kk1ear1k05ecf4uo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDeFbGi5e2v8DYSrneuDHRz6jG1Y5avnW4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "901246953012-dmgsi4s6dvpcngo5kk1ear1k05ecf4uo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

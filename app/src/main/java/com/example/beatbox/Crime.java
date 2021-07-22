@@ -10,13 +10,22 @@ public class Crime {
     private String mTitle;
     private Date mDate;
     private boolean mSolved;
-    public Crime() {
+    private final String userId;
+
+    public Crime(String userId) {
         mId = UUID.randomUUID();
         mDate = new Date();
+        this.userId = userId;
     }
-    public Crime(UUID id) {
+
+    public Crime(UUID id, String userId) {
         mId = id;
         mDate = new Date();
+        this.userId = userId;
+    }
+
+    public String getUserId() {
+        return userId;
     }
 
     public UUID getId() {
@@ -48,24 +57,25 @@ public class Crime {
     }
 
     @Override
-    public boolean equals(Object o){
-        if(o==null)
+    public boolean equals(Object o) {
+        if (o == null)
             return false;
-        if (o instanceof Crime){
-            Crime c = (Crime)o;
-            return c.mId.equals(this.mId);
+        if (o instanceof Crime) {
+            Crime c = (Crime) o;
+            return (c.mId.equals(this.mId));
         }
         return false;
     }
 
-    public String getPhotoFileName(){
-        return "IMG_"+getId()+".jpg";
+    public String getPhotoFileName() {
+        return "IMG_" + getId() + ".jpg";
     }
 
     @NonNull
     @Override
     public String toString() {
         return "Crime Report:" +
+                "\nUser: " + userId +
                 "\nTitle: " + mTitle +
                 "\nDate: " + mDate +
                 "\nSolved: " + (mSolved ? "Yes" : "No");

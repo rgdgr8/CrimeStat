@@ -1,18 +1,14 @@
 package com.example.beatbox;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -26,18 +22,19 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentResultListener;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.io.File;
 import java.util.Date;
@@ -47,6 +44,7 @@ import java.util.UUID;
 public class CrimeFragment extends Fragment {
     public static final String ARG_CRIME_ID = "crime_id";
     public static final String RESULT_DATE = "result_date";
+    private static final String TAG = "CrimeFrag";
 
     private Crime mCrime;
     private File mPhotoFile;
@@ -66,8 +64,10 @@ public class CrimeFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         UUID id = (UUID) getArguments().getSerializable(ARG_CRIME_ID);
         mCrime = CrimeLab.get(getActivity()).getCrime(id);
+        Log.d(TAG, "onCreate: crime = " + mCrime);
         mPhotoFile = CrimeLab.get(getActivity()).getPhotoFile(mCrime);
 
         /* launcher must be created before the fragment views are created or even before the fragement is created
@@ -77,8 +77,7 @@ public class CrimeFragment extends Fragment {
                 new ActivityResultCallback<ActivityResult>() {
                     @Override
                     public void onActivityResult(ActivityResult result) {
-                        Log.d("CrimeFrag onActivityResult", String.valueOf(result.getResultCode()));
-                        if (result.getResultCode()== Activity.RESULT_OK){
+                        if (result.getResultCode() == Activity.RESULT_OK) {
                             Uri uri = FileProvider.getUriForFile(getActivity(),
                                     "com.example.beatbox.fileprovider", mPhotoFile);
                             getActivity().revokeUriPermission(uri,
@@ -91,7 +90,7 @@ public class CrimeFragment extends Fragment {
 
     private void updatePhotoView() {
         if (mPhotoFile == null || !mPhotoFile.exists()) {
-            mCrimeImage.setImageDrawable(getResources().getDrawable(R.drawable.add_image_foreground,null));
+            mCrimeImage.setImageDrawable(getResources().getDrawable(R.drawable.ic_launcher_foreground, null));
             mDelImageBtn.setText("Add Image");
         } else {
             Bitmap bitmap = PictureUtils.getScaledBitmap(
@@ -101,9 +100,9 @@ public class CrimeFragment extends Fragment {
         }
     }
 
-    public static CrimeFragment newInstance(UUID id){
+    public static CrimeFragment newInstance(UUID id) {
         Bundle b = new Bundle();
-        b.putSerializable(ARG_CRIME_ID,id);
+        b.putSerializable(ARG_CRIME_ID, id);
         CrimeFragment cf = new CrimeFragment();
         cf.setArguments(b);
         return cf;
@@ -111,21 +110,24 @@ public class CrimeFragment extends Fragment {
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.crime_fragment,container,false);
+        View v = inflater.inflate(R.layout.crime_fragment, container, false);
 
-        mTitleField = (EditText) v.findViewById(R.id.crime_title);
+        mTitleField = v.findViewById(R.id.crime_title);
         mTitleField.setText(mCrime.getTitle());
+
         mTitleField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(
                     CharSequence s, int start, int count, int after) {
                 // This space intentionally left blank
             }
+
             @Override
             public void onTextChanged(
                     CharSequence s, int start, int before, int count) {
                 mCrime.setTitle(s.toString());
             }
+
             @Override
             public void afterTextChanged(Editable s) {
                 // This one too
@@ -143,25 +145,26 @@ public class CrimeFragment extends Fragment {
                 fm.setFragmentResultListener(RESULT_DATE, dpf, new FragmentResultListener() {
                     @Override
                     public void onFragmentResult(@NonNull String requestKey, @NonNull Bundle result) {
-                        if (requestKey.equals(RESULT_DATE)){
+                        if (requestKey.equals(RESULT_DATE)) {
                             Date dt = (Date) result.getSerializable(DatePickerFragment.ARG_DATE);
                             mCrime.setDate(dt);
                             mDateButton.setText(dt.toString());
                         }
                     }
                 });
-                dpf.show(fm,"DateDialog");//show dialog
+                dpf.show(fm, "DateDialog");//show dialog
             }
         });
 
-        mSolvedCheckBox = (CheckBox)v.findViewById(R.id.crime_solved);
+        mSolvedCheckBox = (CheckBox) v.findViewById(R.id.crime_solved);
         mSolvedCheckBox.setChecked(mCrime.isSolved());
         mSolvedCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView,
                                          boolean isChecked) {
                 mCrime.setSolved(isChecked);
-            } });
+            }
+        });
 
         mDelButton = v.findViewById(R.id.del_btn);
         mDelButton.setOnClickListener(new View.OnClickListener() {
@@ -179,7 +182,7 @@ public class CrimeFragment extends Fragment {
             public void onClick(View v) {
                 Intent i = new Intent(Intent.ACTION_SEND);
                 i.setType("text/plain");
-                i.putExtra(Intent.EXTRA_TEXT,mCrime.toString());
+                i.putExtra(Intent.EXTRA_TEXT, mCrime.toString());
                 startActivity(i);
             }
         });
@@ -188,7 +191,7 @@ public class CrimeFragment extends Fragment {
         mCrimeImage.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
-                Log.d("onGlobalLayout","kkkk");
+                Log.d("onGlobalLayout", "kkkk");
                 mCrimeImage.getViewTreeObserver().removeOnGlobalLayoutListener(this);
                 crimeImgWidth = mCrimeImage.getWidth();
                 crimeImgHeight = mCrimeImage.getHeight();
@@ -198,7 +201,7 @@ public class CrimeFragment extends Fragment {
         mCrimeImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(mPhotoFile==null || !mPhotoFile.exists()) {
+                if (mPhotoFile == null || !mPhotoFile.exists()) {
                     Intent captureImageIntent = new Intent();
                     captureImageIntent.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
                     Uri uri = FileProvider.getUriForFile(getActivity(), "com.example.beatbox.fileprovider", mPhotoFile);
@@ -221,14 +224,14 @@ public class CrimeFragment extends Fragment {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }*/
-                }else {
+                } else {
                     Bitmap bitmap = BitmapFactory.decodeFile(mPhotoFile.getPath());
-                    View dialogView = LayoutInflater.from(getActivity()).inflate(R.layout.show_image,null);
+                    View dialogView = LayoutInflater.from(getActivity()).inflate(R.layout.show_bigger_image, null);
                     ImageView img = dialogView.findViewById(R.id.dialog_img);
                     img.setImageBitmap(bitmap);
                     new AlertDialog.Builder(getActivity())
                             .setView(dialogView)
-                            .setNeutralButton("Done",null)
+                            .setNeutralButton("Done", null)
                             .create().show();
                 }
             }
@@ -238,7 +241,7 @@ public class CrimeFragment extends Fragment {
         mDelImageBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mPhotoFile==null || !mPhotoFile.exists()) {
+                if (mPhotoFile == null || !mPhotoFile.exists()) {
                     mCrimeImage.performClick();
                     return;
                 }
@@ -247,6 +250,24 @@ public class CrimeFragment extends Fragment {
                 updatePhotoView();
             }
         });
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        Log.d(TAG, "onCreateView: crime = "+mCrime+"  user = "+user.getUid());
+        if (user == null || !user.getUid().equals(mCrime.getUserId())) {
+            mCrimeImage.setEnabled(false);
+
+            mDelImageBtn.setText("Image");
+            mDelImageBtn.setEnabled(false);
+
+            mTitleField.setEnabled(false);
+
+            mDateButton.setEnabled(false);
+
+            mSolvedCheckBox.setEnabled(false);
+
+            mDelButton.setVisibility(View.INVISIBLE);
+            mDelButton.setEnabled(false);
+        }
 
         return v;
     }
@@ -291,10 +312,11 @@ public class CrimeFragment extends Fragment {
     }*/
 
     @Override
-    public void onPause() {
-        super.onPause();
+    public void onStop() {
+        super.onStop();
 
-        if(mCrime!=null) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (mCrime != null && user != null) {
             CrimeLab.get(getActivity())
                     .updateCrime(mCrime);
         }

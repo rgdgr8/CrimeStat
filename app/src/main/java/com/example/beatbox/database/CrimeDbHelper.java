@@ -22,7 +22,8 @@ public class CrimeDbHelper extends SQLiteOpenHelper {
                 + CrimeTable.Cols.UUID + " TEXT, "
                 + CrimeTable.Cols.TITLE + " TEXT, "
                 + CrimeTable.Cols.DATE + " integer, "
-                + CrimeTable.Cols.SOLVED + " integer )"
+                + CrimeTable.Cols.SOLVED + " integer, "
+                + CrimeTable.Cols.USER + " TEXT )"
         );
     }
 

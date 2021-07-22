@@ -11,6 +11,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -24,42 +25,77 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.Date;
-import java.util.GregorianCalendar;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.ValueEventListener;
+
 import java.util.List;
-import java.util.UUID;
 
 public class CrimeListFragment extends Fragment {
+    private static final String TAG = "CrimeListFrag";
     public static String SP_INT_ARG_FOR_ITEM_CHANGED = "item_changed";
-    public static String SP_INT_ARG_FOR_ITEM_REMOVED = "item_removed";
     private RecyclerView rv;
     private CrimeListAdapter clAdapter;
     private SharedPreferences sp;
     private boolean mSubtitleVisible = false;
+    private List<Crime> mCrimeList;
+    private ValueEventListener valueEventListener;
 
     @Override
     public void onCreate(@Nullable @org.jetbrains.annotations.Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
+
+        sp = getActivity().getSharedPreferences(CrimeListActivity.TAG, Context.MODE_PRIVATE);
+        mCrimeList = CrimeLab.get(getActivity()).getCrimes();
+
+        valueEventListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Log.d(TAG, "onDataChange: ");
+                mCrimeList.clear();
+                for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                    Crime c = FireBaseDbUtils.getCrime(dataSnapshot);
+                    mCrimeList.add(c);
+                }
+                clAdapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e(TAG, "onCancelled: ", error.toException());
+            }
+        };
+
+        FireBaseDbUtils.DB_REF.addValueEventListener(valueEventListener);
     }
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.recycler_view,container,false);
+        View v = inflater.inflate(R.layout.fragment_crime_list, container, false);
         rv = v.findViewById(R.id.crime_recycler_view);
         rv.setLayoutManager(new LinearLayoutManager(getActivity()));
 
         if (savedInstanceState != null) {
             mSubtitleVisible = savedInstanceState.getBoolean(SP_INT_ARG_FOR_ITEM_CHANGED);
         }
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            Button userIdText = getActivity().findViewById(R.id.user_id_text);
+            userIdText.setText(user.getEmail() + "  " + user.getUid());
+        }
+
         updateUI();
 
         return v;
     }
 
-    public void updateUI(){
+    public void updateUI() {
         CrimeLab cl = CrimeLab.get(getActivity());
-        clAdapter = new CrimeListAdapter(cl.getCrimes());
+        clAdapter = new CrimeListAdapter(mCrimeList);
         new ItemTouchHelper(itemCallBack).attachToRecyclerView(rv);
         rv.setAdapter(clAdapter);
     }
@@ -67,7 +103,7 @@ public class CrimeListFragment extends Fragment {
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
-        inflater.inflate(R.menu.fragment_crime_list,menu);
+        inflater.inflate(R.menu.menu_crime_list_fragment, menu);
 
         MenuItem subtitleItem = menu.findItem(R.id.show_subtitle);
         if (mSubtitleVisible) {
@@ -79,19 +115,27 @@ public class CrimeListFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        switch (item.getItemId()){
+        switch (item.getItemId()) {
             case R.id.new_crime:
-                CrimeLab cl = CrimeLab.get(getActivity());
-                sp.edit().putInt(SP_INT_ARG_FOR_ITEM_CHANGED,cl.getCrimes().size()).apply();//saves the position of the new list item
-                Crime c = new Crime();
-                cl.addCrime(c);
-                clAdapter.notifyItemInserted((cl.getCrimes().size()-1));
-                startActivity(CrimePagerActivity.CrimeIntent(getActivity(),c.getId()));
+                sp.edit().putInt(SP_INT_ARG_FOR_ITEM_CHANGED, -1).apply();
+                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                if (user == null) {
+                    Toast.makeText(getActivity(), "Must login first!", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                startActivity(CrimePagerActivity.CrimeIntent(getActivity()));
                 return true;
             case R.id.show_subtitle:
                 mSubtitleVisible = !mSubtitleVisible;
                 getActivity().invalidateOptionsMenu();//redraws the toolbar
                 updateSubtitle();
+                return true;
+            case R.id.logout:
+                LoginFragment fragment = new LoginFragment();
+                FirebaseAuth.getInstance().signOut();
+                getParentFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, fragment).commit();
+                mCrimeList.clear();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -99,8 +143,7 @@ public class CrimeListFragment extends Fragment {
     }
 
     private void updateSubtitle() {
-        CrimeLab crimeLab = CrimeLab.get(getActivity());
-        int crimeCount = crimeLab.getCrimes().size();
+        int crimeCount = mCrimeList.size();
         String subtitle = getString(R.string.subtitle_format, crimeCount);
 
         if (!mSubtitleVisible) {
@@ -111,26 +154,25 @@ public class CrimeListFragment extends Fragment {
         activity.getSupportActionBar().setSubtitle(subtitle);
     }
 
-    @Override
+    /*@Override
     public void onResume() {
         super.onResume();
-        sp = getActivity().getSharedPreferences(CrimeListActivity.TAG, Context.MODE_PRIVATE);
-        int itemChangedChecker = sp.getInt(SP_INT_ARG_FOR_ITEM_CHANGED,-1);
-        int itemRemovedChecker = sp.getInt(SP_INT_ARG_FOR_ITEM_REMOVED,-1);
+        int itemChangedChecker = sp.getInt(SP_INT_ARG_FOR_ITEM_CHANGED, -1);
+        int itemRemovedChecker = sp.getInt(SP_INT_ARG_FOR_ITEM_REMOVED, -1);
 
-        if(itemChangedChecker>-1) {
+        if (itemChangedChecker > -1) {
             clAdapter.notifyItemChanged(itemChangedChecker);
         }
-        if(itemRemovedChecker>-1){
+        if (itemRemovedChecker > -1) {
             clAdapter.notifyItemRemoved(itemRemovedChecker);
             updateSubtitle();
         }
-    }
+    }*/
 
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putBoolean(SP_INT_ARG_FOR_ITEM_CHANGED,mSubtitleVisible);
+        outState.putBoolean(SP_INT_ARG_FOR_ITEM_CHANGED, mSubtitleVisible);
     }
 
     private class CrimeHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
@@ -139,15 +181,16 @@ public class CrimeListFragment extends Fragment {
         private TextView mTitleTV;
         private TextView mDateTV;
         private ImageView isSolved;
+
         public CrimeHolder(LayoutInflater inflater, ViewGroup parent) {
-            super(inflater.inflate(R.layout.list_item,parent,false));//super(view)
+            super(inflater.inflate(R.layout.list_item, parent, false));//super(view)
             mTitleTV = itemView.findViewById(R.id.crime_title);
             mDateTV = itemView.findViewById(R.id.crime_date);
             isSolved = itemView.findViewById(R.id.is_solved);
             itemView.setOnClickListener(this);
         }
 
-        public void bind(Crime c,int pos){
+        public void bind(Crime c, int pos) {
             mCrime = c;
             position = pos;
             mTitleTV.setText(mCrime.getTitle());
@@ -161,16 +204,19 @@ public class CrimeListFragment extends Fragment {
         @Override
         public void onClick(View v) {
             //Toast.makeText(getActivity(),mCrime.getTitle(),Toast.LENGTH_SHORT).show();
-            sp.edit().putInt(SP_INT_ARG_FOR_ITEM_CHANGED,position).apply();
-            startActivity(CrimePagerActivity.CrimeIntent(getActivity(),mCrime.getId()));
+            sp.edit().putInt(SP_INT_ARG_FOR_ITEM_CHANGED, position).apply();
+            startActivity(CrimePagerActivity.CrimeIntent(getActivity()));
         }
 
-        public Crime getCrime(){return mCrime;}
+        public Crime getCrime() {
+            return mCrime;
+        }
     }
 
-    private class CrimeListAdapter extends RecyclerView.Adapter<CrimeHolder>{
+    private class CrimeListAdapter extends RecyclerView.Adapter<CrimeHolder> {
         private List<Crime> mCrimes;
-        public CrimeListAdapter(List<Crime> cl){
+
+        public CrimeListAdapter(List<Crime> cl) {
             mCrimes = cl;
         }
 
@@ -178,12 +224,12 @@ public class CrimeListFragment extends Fragment {
         @Override
         public CrimeHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             LayoutInflater inflater = LayoutInflater.from(getActivity());
-            return new CrimeHolder(inflater,parent);
+            return new CrimeHolder(inflater, parent);
         }
 
         @Override
         public void onBindViewHolder(@NonNull CrimeHolder holder, int position) {
-            holder.bind(mCrimes.get(position),position);
+            holder.bind(mCrimes.get(position), position);
         }
 
         @Override
@@ -192,7 +238,7 @@ public class CrimeListFragment extends Fragment {
         }
     }
 
-    ItemTouchHelper.SimpleCallback itemCallBack = new ItemTouchHelper.SimpleCallback(0,ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+    ItemTouchHelper.SimpleCallback itemCallBack = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
         @Override
         public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
             return false;
@@ -201,14 +247,20 @@ public class CrimeListFragment extends Fragment {
         @Override
         public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
             int pos = viewHolder.getAdapterPosition();
+
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user == null || !user.getUid().equals(((CrimeHolder) viewHolder).getCrime().getUserId())) {
+                clAdapter.notifyItemChanged(pos);
+                return;
+            }
+
             new AlertDialog.Builder(getActivity())
                     .setTitle("Delete?")
                     .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            CrimeHolder ch = (CrimeHolder)viewHolder;
+                            CrimeHolder ch = (CrimeHolder) viewHolder;
                             CrimeLab.get(getActivity()).deleteCrime(ch.getCrime());
-                            clAdapter.notifyItemRemoved(pos);
                         }
                     })
                     .setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -220,4 +272,11 @@ public class CrimeListFragment extends Fragment {
                     .create().show();
         }
     };
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        FireBaseDbUtils.DB_REF.removeEventListener(valueEventListener);
+    }
 }

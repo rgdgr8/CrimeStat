@@ -10,4 +10,8 @@
         android:id="@+id/show_subtitle"
         android:title="@string/show_subtitle"
         app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/logout"
+        android:title="Logout"
+        app:showAsAction="ifRoom"/>
 </menu>
