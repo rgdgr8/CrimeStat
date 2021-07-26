@@ -8,4 +8,4 @@ Note:
 1. Uses Firebase for auth
 2. Firebase real time database is used for the storage of human readable data 
 3. Image files are stored in Firebase cloud storage (**Functionality to be added**)
-4. User specific image files are also stored in persistent local storage, but other data is stored in firebase only
+4. User specific image files are also stored in persistent local storage using FileProvider, but other data is stored in firebase only
