@@ -80,6 +80,7 @@ public class CrimeLab {
 
         getPhotoFile(crime).delete();
 
+        //deleteCrime also deletes photo from FB storage!!!!!!!
         FireBaseDbUtils.deleteCrime(crime);
     }
 

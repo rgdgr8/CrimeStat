@@ -38,7 +38,8 @@ public class CrimePagerActivity extends AppCompatActivity {
             if(user!=null){
                 currItemIndex = mCrimes.size();
                 mCrimes.add(new Crime(user.getUid()));
-                FireBaseDbUtils.addCrime(mCrimes.get(currItemIndex));
+                //FireBaseDbUtils.addCrime(mCrimes.get(currItemIndex));
+                CrimeLab.get(this).addCrime(mCrimes.get(currItemIndex));
             }
         }
 

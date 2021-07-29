@@ -33,8 +33,13 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentResultListener;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.squareup.picasso.Picasso;
 
 import java.io.File;
 import java.util.Date;
@@ -80,8 +85,7 @@ public class CrimeFragment extends Fragment {
                         if (result.getResultCode() == Activity.RESULT_OK) {
                             Uri uri = FileProvider.getUriForFile(getActivity(),
                                     "com.example.beatbox.fileprovider", mPhotoFile);
-                            getActivity().revokeUriPermission(uri,
-                                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                            getActivity().revokeUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                             updatePhotoView();
                         }
                     }
@@ -92,11 +96,27 @@ public class CrimeFragment extends Fragment {
         if (mPhotoFile == null || !mPhotoFile.exists()) {
             mCrimeImage.setImageDrawable(getResources().getDrawable(R.drawable.ic_launcher_foreground, null));
             mDelImageBtn.setText("Add Image");
+
+            /********** Get photo from FB storage *****************/
+            Uri file = Uri.fromFile(mPhotoFile);
+            String path = FireBaseDbUtils.FB_IMAGES + "/" + file.getLastPathSegment();
+            StorageReference ref = FirebaseStorage.getInstance().getReference().child(path);
+            ref.getDownloadUrl().addOnSuccessListener(uri -> {
+                Picasso.get().load(uri).into(mCrimeImage);
+                mDelImageBtn.setText("Remove Image");
+            }).addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    Log.e(TAG, "onDownloadPhotoFailure: ", e);
+                }
+            });
         } else {
             Bitmap bitmap = PictureUtils.getScaledBitmap(
                     mPhotoFile.getPath(), crimeImgWidth, crimeImgHeight);
             mCrimeImage.setImageBitmap(bitmap);
             mDelImageBtn.setText("Remove Image");
+
+            FireBaseDbUtils.uploadPhotoFile(mPhotoFile);
         }
     }
 
@@ -238,22 +258,21 @@ public class CrimeFragment extends Fragment {
         });
 
         mDelImageBtn = v.findViewById(R.id.del_img);
-        mDelImageBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mPhotoFile == null || !mPhotoFile.exists()) {
-                    mCrimeImage.performClick();
-                    return;
-                }
-
-                mPhotoFile.delete();
-                updatePhotoView();
+        mDelImageBtn.setOnClickListener(v1 -> {
+            if (mPhotoFile == null || !mPhotoFile.exists()) {
+                mCrimeImage.performClick();
+                return;
             }
+
+            mPhotoFile.delete();
+            FireBaseDbUtils.deletePhotoFile(mCrime);
+            updatePhotoView();
         });
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        Log.d(TAG, "onCreateView: crime = "+mCrime+"  user = "+user.getUid());
         if (user == null || !user.getUid().equals(mCrime.getUserId())) {
+            Log.d(TAG, "onCreateView: crime = " + mCrime + "  user = " + user.getUid());
+
             mCrimeImage.setEnabled(false);
 
             mDelImageBtn.setText("Image");

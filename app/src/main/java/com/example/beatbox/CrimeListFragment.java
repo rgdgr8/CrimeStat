@@ -42,6 +42,7 @@ public class CrimeListFragment extends Fragment {
     private boolean mSubtitleVisible = false;
     private List<Crime> mCrimeList;
     private ValueEventListener valueEventListener;
+    private Button userIdText;
 
     @Override
     public void onCreate(@Nullable @org.jetbrains.annotations.Nullable Bundle savedInstanceState) {
@@ -84,7 +85,7 @@ public class CrimeListFragment extends Fragment {
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
-            Button userIdText = getActivity().findViewById(R.id.user_id_text);
+            userIdText = getActivity().findViewById(R.id.user_id_text);
             userIdText.setText(user.getEmail() + "  " + user.getUid());
         }
 
@@ -136,6 +137,7 @@ public class CrimeListFragment extends Fragment {
                 getParentFragmentManager().beginTransaction()
                         .replace(R.id.fragment_container, fragment).commit();
                 mCrimeList.clear();
+                userIdText.setText("Login or SignUp");
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
